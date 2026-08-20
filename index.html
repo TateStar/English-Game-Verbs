@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CYBER-DROPPER: Arcade Action</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Roboto+Mono:wght@400;700&display=swap');
+
+        :root {
+            --bg: #030308;
+            --panel: #0d0d1a;
+            --cyan: #00f0ff;
+            --magenta: #ff007f;
+            --green: #00ff66;
+            --red: #ff2255;
+            --yellow: #ffee00;
+            --text: #f0f0ff;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        body {
+            width: 100vw;
+            height: 100vh;
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Orbitron', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        #arcade-container {
+            width: 100%;
+            max-width: 480px;
+            height: 100%;
+            max-height: 850px;
+            background: linear-gradient(180deg, #080816 0%, #030308 100%);
+            border: 2px solid var(--cyan);
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+            box-shadow: 0 0 25px rgba(0, 240, 255, 0.2);
+            overflow: hidden;
+        }
+
+        /* Panel Superior HUD */
+        #hud {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 15px;
+            background: var(--panel);
+            border-bottom: 2px solid var(--cyan);
+            z-index: 10;
+        }
+
+        .hud-item {
+            font-size: 0.85rem;
+        }
+
+        .hud-val {
+            color: var(--cyan);
+            font-family: 'Roboto Mono', monospace;
+            font-weight: bold;
+        }
+
+        /* Barra de Energía */
+        #shield-container {
+            width: 100%;
+            height: 8px;
+            background: #111;
+            position: relative;
+            z-index: 10;
+        }
+
+        #shield-bar {
+            width: 100%;
+            height: 100%;
+            background: var(--green);
+            transition: width 0.1s linear, background 0.3s;
+        }
+
+        /* Panel de Misión Activa */
+        #mission-panel {
+            background: rgba(13, 13, 26, 0.95);
+            padding: 12px;
+            text-align: center;
+            border-bottom: 1px dashed rgba(0, 240, 255, 0.3);
+            z-index: 10;
+        }
+
+        #mission-title {
+            font-size: 0.7rem;
+            color: #888;
+            text-transform: uppercase;
+            margin-bottom: 3px;
+        }
+
+        #target-inf {
+            font-size: 2rem;
+            font-weight: 900;
+            color: var(--yellow);
+            text-shadow: 0 0 10px rgba(255, 238, 0, 0.4);
+            text-transform: uppercase;
+        }
+
+        #target-progress {
+            font-size: 0.8rem;
+            color: var(--magenta);
+            margin-top: 2px;
+            font-family: 'Roboto Mono', monospace;
+        }
+
+        /* Área de Juego Activa (Caída de bloques) */
+        #drop-field {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            background: radial-gradient(circle, rgba(0, 240, 255, 0.03) 0%, transparent 70%);
+        }
+
+        /* Bloques que caen */
+        .fall-block {
+            position: absolute;
+            padding: 10px 18px;
+            background: var(--panel);
+            border: 2px solid var(--magenta);
+            color: var(--text);
+            font-family: 'Roboto Mono', monospace;
+            font-size: 1rem;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            text-transform: uppercase;
+            box-shadow: 0 0 10px rgba(255, 0, 127, 0.3);
+            transition: transform 0.1s;
+            transform: translateX(-50%);
+            animation: pulseBlock 1.5s infinite alternate;
+        }
+
+        .fall-block:active {
+            transform: translateX(-50%) scale(0.9);
+        }
+
+        @keyframes pulseBlock {
+            0% {
+                box-shadow: 0 0 5px rgba(255, 0, 127, 0.2);
+            }
+
+            100% {
+                box-shadow: 0 0 15px rgba(255, 0, 127, 0.6);
+            }
+        }
+
+        /* Pantallas superpuestas (Game Over / Inicio) */
+        .screen-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(3, 3, 8, 0.96);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .screen-overlay h1 {
+            font-size: 2.5rem;
+            color: var(--red);
+            text-shadow: 0 0 20px var(--red);
+            margin-bottom: 15px;
+        }
+
+        .screen-overlay p {
+            font-size: 1rem;
+            margin-bottom: 25px;
+            line-height: 1.5;
+            color: #aaa;
+        }
+
+        .arcade-btn {
+            padding: 15px 35px;
+            background: var(--panel);
+            border: 2px solid var(--cyan);
+            color: var(--cyan);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 6px;
+            text-transform: uppercase;
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
+            transition: 0.2s;
+        }
+
+        .arcade-btn:hover {
+            background: var(--cyan);
+            color: var(--bg);
+            box-shadow: 0 0 25px var(--cyan);
+        }
+
+        #damage-flash {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 34, 85, 0.3);
+            opacity: 0;
+            pointer-events: none;
+            z-index: 50;
+            transition: opacity 0.2s;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="arcade-container">
+        <div id="damage-flash"></div>
+
+        <!-- HUD -->
+        <div id="hud">
+            <div class="hud-item">SCORE: <span id="txt-score" class="hud-val">0</span></div>
+            <div class="hud-item">LVL: <span id="txt-lvl" class="hud-val">1</span></div>
+        </div>
+        <div id="shield-container">
+            <div id="shield-bar"></div>
+        </div>
+
+        <!-- MISIÓN -->
+        <div id="mission-panel">
+            <div id="mission-title">Atrapa en orden (Pasado ➔ Participio)</div>
+            <div id="target-inf">---</div>
+            <div id="target-progress">BUSCANDO PASADO...</div>
+        </div>
+
+        <!-- CAMPO DE ACCIÓN -->
+        <div id="drop-field"></div>
+
+        <!-- PANTALLA INICIO / GAME OVER -->
+        <div id="overlay-screen" class="screen-overlay">
+            <h1 id="overlay-title">CYBER-DROP</h1>
+            <p id="overlay-desc">Atrapa los bloques con el <b>Pasado</b> y el <b>Participio</b> correcto del verbo en
+                infinitivo antes de que toquen el fondo.<br><br>¡Evita las palabras trampa!</p>
+            <button class="arcade-btn" onclick="startGame()">INICIAR MISIÓN</button>
+        </div>
+    </div>
+
+    <script>
+        const verbsData = [
+            {inf: "Become", past: "Became", part: "Become"},
+            {inf: "Begin", past: "Began", part: "Begun"},
+            {inf: "Buy", past: "Bought", part: "Bought"},
+            {inf: "Choose", past: "Chose", part: "Chosen"},
+            {inf: "Drive", past: "Drove", part: "Driven"},
+            {inf: "Feel", past: "Felt", part: "Felt"},
+            {inf: "Find", past: "Found", part: "Found"},
+            {inf: "Fly", past: "Flew", part: "Flown"},
+            {inf: "Forget", past: "Forgot", part: "Forgotten"},
+            {inf: "Get", past: "Got", part: "Gotten"},
+            {inf: "Hear", past: "Heard", part: "Heard"},
+            {inf: "Keep", past: "Kept", part: "Kept"},
+            {inf: "Leave", past: "Left", part: "Left"},
+            {inf: "Lose", past: "Lost", part: "Lost"},
+            {inf: "Meet", past: "Met", part: "Met"},
+            {inf: "Pay", past: "Paid", part: "Paid"},
+            {inf: "Spend", past: "Spent", part: "Spent"},
+            {inf: "Take", past: "Took", part: "Taken"},
+            {inf: "Tell", past: "Told", part: "Told"},
+            {inf: "Think", past: "Thought", part: "Thought"},
+            {inf: "Understand", past: "Understood", part: "Understood"},
+            {inf: "Win", past: "Won", part: "Won"}
+        ];
+
+        let score = 0, level = 1, shield = 100;
+        let gameActive = false;
+        let currentVerb = null;
+        let currentPhase = 0; // 0 busca pasado, 1 busca participio
+        let activeBlocks = [];
+        let spawnTimer = null;
+        let gameLoopInterval = null;
+
+        const field = document.getElementById('drop-field');
+        const txtScore = document.getElementById('txt-score');
+        const txtLvl = document.getElementById('txt-lvl');
+        const shieldBar = document.getElementById('shield-bar');
+        const targetInf = document.getElementById('target-inf');
+        const targetProgress = document.getElementById('target-progress');
+        const overlay = document.getElementById('overlay-screen');
+        const overlayTitle = document.getElementById('overlay-title');
+        const overlayDesc = document.getElementById('overlay-desc');
+        const damageFlash = document.getElementById('damage-flash');
+
+        function startGame() {
+            overlay.style.display = 'none';
+            score = 0;
+            level = 1;
+            shield = 100;
+            gameActive = true;
+            updateHUD();
+            nextTargetVerb();
+
+            // Limpiar bloques anteriores si los hubiera
+            field.innerHTML = '';
+            activeBlocks = [];
+
+            if (spawnTimer) clearInterval(spawnTimer);
+            if (gameLoopInterval) clearInterval(gameLoopInterval);
+
+            // Bucle de movimiento de bloques
+            gameLoopInterval = setInterval(updateGameLoop, 30);
+            // Generador de bloques periódicos
+            let spawnSpeed = Math.max(1200, 2500 - (level * 150));
+            spawnTimer = setInterval(spawnBlock, spawnSpeed);
+        }
+
+        function updateHUD() {
+            txtScore.innerText = score;
+            txtLvl.innerText = level;
+            shieldBar.style.width = Math.max(0, shield) + '%';
+            shieldBar.style.background = shield > 50 ? 'var(--green)' : shield > 25 ? 'var(--yellow)' : 'var(--red)';
+        }
+
+        function nextTargetVerb() {
+            currentVerb = verbsData[Math.floor(Math.random() * verbsData.length)];
+            currentPhase = 0; // Empieza buscando el Pasado
+            targetInf.innerText = currentVerb.inf;
+            targetProgress.innerText = "BUSCANDO: PASADO";
+        }
+
+        function spawnBlock() {
+            if (!gameActive) return;
+
+            // Decidir qué tipo de bloque sale (1 correcto necesario, o un distractor)
+            let blockData = {};
+            let rand = Math.random();
+
+            if (rand < 0.5) {
+                // Bloque objetivo correcto según la fase actual
+                if (currentPhase === 0) {
+                    blockData = {text: currentVerb.past, type: 'correct', phase: 0};
+                } else {
+                    blockData = {text: currentVerb.part, type: 'correct', phase: 1};
+                }
+            } else {
+                // Bloque trampa/distractor
+                let randomVerb = verbsData[Math.floor(Math.random() * verbsData.length)];
+                let fakeText = Math.random() > 0.5 ? randomVerb.past : randomVerb.part;
+                // Asegurar que no sea exactamente el correcto actual
+                if (fakeText === currentVerb.past || fakeText === currentVerb.part) {
+                    fakeText = randomVerb.inf;
+                }
+                blockData = {text: fakeText, type: 'trap', phase: -1};
+            }
+
+            createDomBlock(blockData);
+        }
+
+        function createDomBlock(data) {
+            const el = document.createElement('div');
+            el.className = 'fall-block';
+            el.innerText = data.text;
+
+            // Posición X aleatoria dentro del campo (evitando bordes)
+            let posX = Math.random() * (field.clientWidth - 100) + 50;
+            el.style.left = posX + 'px';
+            el.style.top = '-40px';
+
+            let blockObj = {
+                el: el,
+                x: posX,
+                y: -40,
+                speed: 1.5 + (level * 0.3) + (Math.random() * 0.8),
+                data: data
+            };
+
+            el.onclick = () => handleBlockClick(blockObj);
+            field.appendChild(el);
+            activeBlocks.push(blockObj);
+        }
+
+        function updateGameLoop() {
+            if (!gameActive) return;
+
+            let fieldHeight = field.clientHeight;
+
+            for (let i = activeBlocks.length - 1; i >= 0; i--) {
+                let b = activeBlocks[i];
+                b.y += b.speed;
+                b.el.style.top = b.y + 'px';
+
+                // Si el bloque toca el fondo del campo
+                if (b.y > fieldHeight - 30) {
+                    // Si era un bloque correcto que se escapó, penaliza un poco
+                    if (b.data.type === 'correct' && b.data.phase === currentPhase) {
+                        applyDamage(10);
+                    }
+                    b.el.remove();
+                    activeBlocks.splice(i, 1);
+                }
+            }
+        }
+
+        function handleBlockClick(b) {
+            if (!gameActive) return;
+
+            // Comprobar si es el acierto correcto para la fase actual
+            if (b.data.type === 'correct' && b.data.phase === currentPhase) {
+                if (currentPhase === 0) {
+                    // ¡Pasado conseguido! Pasamos a buscar participio
+                    currentPhase = 1;
+                    targetProgress.innerText = "¡BIEN! BUSCANDO: PARTICIPIO";
+                    score += 50;
+                } else {
+                    // ¡Participio conseguido! Verbo completo completado con éxito
+                    score += 150;
+                    shield = Math.min(100, shield + 15); // Recupera escudo
+                    level = Math.floor(score / 400) + 1;
+                    updateHUD();
+                    nextTargetVerb(); // Cambiar de verbo automáticamente
+                }
+                triggerEffect(b.el, true);
+            } else {
+                // Bloque incorrecto o trampa tocada
+                applyDamage(20);
+                triggerEffect(b.el, false);
+            }
+
+            // Eliminar bloque pulsado
+            let index = activeBlocks.indexOf(b);
+            if (index > -1) {
+                b.el.remove();
+                activeBlocks.splice(index, 1);
+            }
+            updateHUD();
+        }
+
+        function applyDamage(amount) {
+            shield -= amount;
+            damageFlash.style.opacity = '1';
+            setTimeout(() => {damageFlash.style.opacity = '0';}, 200);
+
+            if (shield <= 0) {
+                triggerGameOver();
+            }
+        }
+
+        function triggerEffect(el, success) {
+            el.style.borderColor = success ? 'var(--green)' : 'var(--red)';
+            el.style.transform = 'translateX(-50%) scale(1.2)';
+            setTimeout(() => { }, 200);
+        }
+
+        function triggerGameOver() {
+            gameActive = false;
+            clearInterval(spawnTimer);
+            clearInterval(gameLoopInterval);
+
+            // Limpiar bloques visuales
+            activeBlocks.forEach(b => b.el.remove());
+            activeBlocks = [];
+
+            overlayTitle.innerText = "SISTEMA COLAPSADO";
+            overlayDesc.innerHTML = `Puntuación Final: <b>${score}</b><br>Nivel Alcanzado: <b>${level}</b>`;
+            overlay.style.display = 'flex';
+        }
+    </script>
+</body>
+
+</html>
